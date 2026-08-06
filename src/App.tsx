@@ -1,122 +1,194 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect } from 'react';
+import { Navbar } from './components/Navbar';
+import { Preloader } from './components/ui/Preloader';
+import { Hero } from './components/Hero';
+import { Stats } from './components/Stats';
+import { InteractiveDemo } from './components/InteractiveDemo';
+import { Features } from './components/Features';
+import { DownloadSection } from './components/DownloadSection';
+import { Footer } from './components/Footer';
+import { DocsPage } from './pages/DocsPage';
+import type { DocTabId } from './pages/DocsPage';
+import { PrivacyPage } from './pages/PrivacyPage';
 
-function App() {
-  const [count, setCount] = useState(0)
+type PageRoute = 'home' | 'about' | 'privacy';
+type ThemeMode = 'dark' | 'light';
+
+export default function App() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState<PageRoute>('home');
+  const [initialDocTab, setInitialDocTab] = useState<DocTabId>('getting-started');
+
+  const [theme, setTheme] = useState<ThemeMode>(() => {
+    const saved = localStorage.getItem('kairo-theme') as ThemeMode;
+    return saved || 'dark';
+  });
+
+  const [accentColor, setAccentColor] = useState<string>(() => {
+    const saved = localStorage.getItem('kairo-accent');
+    return saved || '#5E6F52';
+  });
+
+  useEffect(() => {
+    document.documentElement.className = theme;
+    localStorage.setItem('kairo-theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--accent', accentColor);
+    localStorage.setItem('kairo-accent', accentColor);
+  }, [accentColor]);
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  useEffect(() => {
+    const handleLocation = () => {
+      const path = window.location.pathname.toLowerCase().replace(/\/$/, '');
+      if (path.startsWith('/docs')) {
+        setCurrentPage('about');
+        setIsLoading(true);
+        if (path === '/docs/how-it-works') setInitialDocTab('how-it-works');
+        else if (path === '/docs/features') setInitialDocTab('features');
+        else if (path === '/docs/account-billing') setInitialDocTab('account-billing');
+        else if (path === '/docs/faq') setInitialDocTab('faq');
+        else if (path === '/docs/privacy') setInitialDocTab('privacy');
+        else setInitialDocTab('getting-started');
+      } else if (path.startsWith('/privacy')) {
+        setCurrentPage('privacy');
+        setIsLoading(true);
+        setInitialDocTab('privacy');
+      } else {
+        setCurrentPage('home');
+      }
+    };
+
+    handleLocation();
+    window.addEventListener('popstate', handleLocation);
+    return () => window.removeEventListener('popstate', handleLocation);
+  }, []);
+
+  const navigatePage = (page: PageRoute) => {
+    if (page === 'home') {
+      if (currentPage === 'home') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        setCurrentPage('home');
+        window.history.pushState({}, '', '/');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return;
+    }
+
+    if (page === 'about') {
+      if (currentPage !== 'about') {
+        setCurrentPage('about');
+        setInitialDocTab('getting-started');
+        setIsLoading(true);
+      }
+      window.history.pushState({}, '', '/docs/getting-started');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (page === 'privacy') {
+      if (currentPage !== 'about') {
+        setCurrentPage('about');
+      }
+      setInitialDocTab('privacy');
+      window.history.pushState({}, '', '/privacy');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+  };
+
+  const scrollToSection = (id: string) => {
+    if (currentPage !== 'home') {
+      window.location.href = `/#${id}`;
+      return;
+    }
+    if (id === 'top' || id === 'hero') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const element = document.getElementById(id);
+    if (element) {
+      const yOffset = -70; // Compensate for fixed top header height
+      const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
 
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+      {isLoading && (
+        <Preloader
+          theme={theme}
+          durationMs={2500}
+          onFinish={() => setIsLoading(false)}
+        />
+      )}
 
-      <div className="ticks"></div>
+      {currentPage === 'about' ? (
+        <DocsPage
+          theme={theme}
+          initialTab={initialDocTab}
+          onToggleTheme={toggleTheme}
+          onNavigateHome={() => navigatePage('home')}
+          onNavigatePage={navigatePage}
+          onScrollToSection={scrollToSection}
+        />
+      ) : currentPage === 'privacy' ? (
+        <PrivacyPage
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onNavigateHome={() => navigatePage('home')}
+          onNavigatePage={navigatePage}
+          onScrollToSection={scrollToSection}
+        />
+      ) : (
+        <div className={`min-h-screen bg-(--bg) text-(--text-primary) flex flex-col font-sans selection:bg-blue-600/30 selection:text-white ${theme}`}>
+          {/* Navigation Bar */}
+          <Navbar
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            onNavigatePage={navigatePage}
+            onScrollToSection={scrollToSection}
+          />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+          {/* Main Content */}
+          <main className="flex-1">
+            {/* Hero Section */}
+            <Hero
+              theme={theme}
+              onScrollToDownload={() => scrollToSection('download')}
+              onScrollToDemo={() => scrollToSection('demo')}
+              accentColor={accentColor}
+              onSelectAccentColor={setAccentColor}
+            />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+            {/* Stats & Download Metrics Section */}
+            <Stats />
+
+            {/* Interactive Live Demo */}
+            <InteractiveDemo theme={theme} accentColor={accentColor} />
+
+            {/* Core Features */}
+            <Features />
+
+            {/* Download Section */}
+            <DownloadSection />
+          </main>
+
+          {/* Footer */}
+          <Footer
+            theme={theme}
+            onNavigatePage={navigatePage}
+            onScrollToSection={scrollToSection}
+          />
+        </div>
+      )}
     </>
-  )
+  );
 }
-
-export default App

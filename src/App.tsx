@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { Preloader } from './components/ui/Preloader';
 import { Hero } from './components/Hero';
@@ -9,7 +9,6 @@ import { DownloadSection } from './components/DownloadSection';
 import { Footer } from './components/Footer';
 import { DocsPage } from './pages/DocsPage';
 import type { DocTabId } from './pages/DocsPage';
-import { PrivacyPage } from './pages/PrivacyPage';
 
 type PageRoute = 'home' | 'about' | 'privacy';
 type ThemeMode = 'dark' | 'light';
@@ -18,6 +17,11 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState<PageRoute>('home');
   const [initialDocTab, setInitialDocTab] = useState<DocTabId>('getting-started');
+
+  const currentPageRef = useRef<PageRoute>(currentPage);
+  useEffect(() => {
+    currentPageRef.current = currentPage;
+  }, [currentPage]);
 
   const [theme, setTheme] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem('kairo-theme') as ThemeMode;
@@ -46,20 +50,29 @@ export default function App() {
   useEffect(() => {
     const handleLocation = () => {
       const path = window.location.pathname.toLowerCase().replace(/\/$/, '');
-      if (path.startsWith('/docs')) {
+      const prevPage = currentPageRef.current;
+
+      if (path.startsWith('/docs') || path === '/privacy') {
+        let targetTab: DocTabId = 'getting-started';
+        if (path === '/docs/how-it-works') targetTab = 'how-it-works';
+        else if (path === '/docs/features') targetTab = 'features';
+        else if (path === '/docs/account-billing') targetTab = 'account-billing';
+        else if (path === '/docs/faq') targetTab = 'faq';
+        else if (path === '/docs/privacy' || path === '/privacy') targetTab = 'privacy';
+
+        if (path === '/privacy') {
+          window.history.replaceState({}, '', '/docs/privacy');
+        }
+
+        if (prevPage !== 'about' && prevPage !== 'privacy') {
+          setIsLoading(true);
+        }
         setCurrentPage('about');
-        setIsLoading(true);
-        if (path === '/docs/how-it-works') setInitialDocTab('how-it-works');
-        else if (path === '/docs/features') setInitialDocTab('features');
-        else if (path === '/docs/account-billing') setInitialDocTab('account-billing');
-        else if (path === '/docs/faq') setInitialDocTab('faq');
-        else if (path === '/docs/privacy') setInitialDocTab('privacy');
-        else setInitialDocTab('getting-started');
-      } else if (path.startsWith('/privacy')) {
-        setCurrentPage('privacy');
-        setIsLoading(true);
-        setInitialDocTab('privacy');
+        setInitialDocTab(targetTab);
       } else {
+        if (prevPage === 'about' || prevPage === 'privacy') {
+          setIsLoading(true);
+        }
         setCurrentPage('home');
       }
     };
@@ -70,10 +83,13 @@ export default function App() {
   }, []);
 
   const navigatePage = (page: PageRoute) => {
+    const prevPage = currentPageRef.current;
+
     if (page === 'home') {
-      if (currentPage === 'home') {
+      if (prevPage === 'home') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
+        setIsLoading(true);
         setCurrentPage('home');
         window.history.pushState({}, '', '/');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -82,36 +98,55 @@ export default function App() {
     }
 
     if (page === 'about') {
-      if (currentPage !== 'about') {
-        setCurrentPage('about');
-        setInitialDocTab('getting-started');
+      if (prevPage !== 'about' && prevPage !== 'privacy') {
         setIsLoading(true);
       }
+      setCurrentPage('about');
+      setInitialDocTab('getting-started');
       window.history.pushState({}, '', '/docs/getting-started');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (page === 'privacy') {
-      if (currentPage !== 'about') {
-        setCurrentPage('about');
+      if (prevPage !== 'about' && prevPage !== 'privacy') {
+        setIsLoading(true);
       }
+      setCurrentPage('about');
       setInitialDocTab('privacy');
-      window.history.pushState({}, '', '/privacy');
+      window.history.pushState({}, '', '/docs/privacy');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
   };
 
   const scrollToSection = (id: string) => {
-    if (currentPage !== 'home') {
-      window.location.href = `/#${id}`;
+    const prevPage = currentPageRef.current;
+
+    if (prevPage !== 'home') {
+      setIsLoading(true);
+      setCurrentPage('home');
+      window.history.pushState({}, '', '/');
+      setTimeout(() => {
+        if (id === 'top' || id === 'hero') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          const element = document.getElementById(id);
+          if (element) {
+            const yOffset = -70; // Compensate for fixed top header height
+            const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+          }
+        }
+      }, 50);
       return;
     }
+
     if (id === 'top' || id === 'hero') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+
     const element = document.getElementById(id);
     if (element) {
       const yOffset = -70; // Compensate for fixed top header height
@@ -130,18 +165,10 @@ export default function App() {
         />
       )}
 
-      {currentPage === 'about' ? (
+      {currentPage === 'about' || currentPage === 'privacy' ? (
         <DocsPage
           theme={theme}
           initialTab={initialDocTab}
-          onToggleTheme={toggleTheme}
-          onNavigateHome={() => navigatePage('home')}
-          onNavigatePage={navigatePage}
-          onScrollToSection={scrollToSection}
-        />
-      ) : currentPage === 'privacy' ? (
-        <PrivacyPage
-          theme={theme}
           onToggleTheme={toggleTheme}
           onNavigateHome={() => navigatePage('home')}
           onNavigatePage={navigatePage}

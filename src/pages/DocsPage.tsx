@@ -141,7 +141,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({
     setExpandedTabs((prev) => ({ ...prev, [docTab]: true }));
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    const targetUrl = docTab === "privacy" ? "/privacy" : `/docs/${docTab}`;
+    const targetUrl = `/docs/${docTab}`;
     window.history.pushState({ tab: docTab }, "", targetUrl);
   };
 
@@ -194,7 +194,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({
                 {filteredMenuItems.map((item) => {
                   const isTabActive = activeTab === item.id;
                   const isExpanded = expandedTabs[item.id] ?? isTabActive;
-                  const itemUrl = item.id === "privacy" ? "/privacy" : `/docs/${item.id}`;
+                  const itemUrl = `/docs/${item.id}`;
                   const level1Toc = item.toc ? item.toc.filter((tocItem) => tocItem.level === 1) : [];
                   const hasToc = level1Toc.length > 0;
 

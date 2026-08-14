@@ -14,7 +14,7 @@ export const DownloadSection: React.FC = () => {
       recommended: true,
       disabled: false,
       buttonText: "Download for Windows",
-      downloadUrl: "https://github.com/Kairo-md/kairo-releases/releases/download/v0.6.1/Kairo_0.6.1_x64-setup.exe",
+      downloadUrl: "https://kairo.tanas2k4.dev/downloads/Kairo_0.6.1_x64-setup.exe",
     },
     {
       os: "macOS",
